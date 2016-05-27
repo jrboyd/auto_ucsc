@@ -12,15 +12,17 @@ fetch_ref_image = function(chrm, start, end){
   return(my_image)
 }
 
-plot_ref = function(my_image, start, end){
+plot_ref = function(my_image, xmin, xmax, ymin, ymax){
   img_height = nrow(my_image)
   lab_width = 117
   img_width = ncol(my_image)
 #   par(mai = rep(0, 4))
-  plot(x = c(start, end), y = c(0,1), axes = F, type = "n", xlab = "", ylab = "")
-#   axis(1, at = c(start, end))
-  w = end - start
-  xleft = start -  w / (800 - 117) * 117
-  rasterImage(my_image, xleft = xleft, ybottom = 0, xright = end, ytop = 1)
+#   plot(x = c(xmin, xmax), y = c(0,1), axes = F, type = "n", xlab = "", ylab = "")
+#   axis(1, at = c(xmin, xmax))
+  w = xmax - xmin
+  fudge = w * 117 / (800 - 117)
+  xmin = xmin -  fudge
+#   rect(xleft = xmin, ybottom = ymin, xright = xmax, ytop = ymax)
+  rasterImage(my_image, xleft = xmin, ybottom = ymin, xright = xmax, ytop = ymax)
   return(img_height)
 }

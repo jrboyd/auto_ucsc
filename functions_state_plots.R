@@ -37,7 +37,7 @@ if(!exists("states.cHMM")){
 # ends = local[,4]
 # states = local[,5]
 
-plot_state_numbers = function(starts, ends, states, xlim, hide_numbers = T){
+plot_state_numbers = function(starts, ends, states, xlim, ylim, hide_numbers = T){
   uniq_states = 1:35
   state_colors = rainbow(length(uniq_states))
   names(state_colors) = uniq_states
@@ -58,15 +58,16 @@ plot_state_numbers = function(starts, ends, states, xlim, hide_numbers = T){
     e = ends[i - 1]
     ranges = rbind(ranges, c(start = s, end = e, state = curr_state))
   }
-  plot(0, xlim = xlim, ylim = c(-1,1), type = "n", xlab = "", ylab = "", bty = "n", axes = F)
-    at = c(xlim[1], axisTicks(xlim, log = F), xlim[2])
-    axis(side = 1, at = at, labels = ifelse(rep(hide_numbers, length(at)), rep("", length(at)), at))
-#   axis(side = 1, labels = !hide_numbers, outer = 
+  #   plot(0, xlim = xlim, ylim = c(-1,1), type = "n", xlab = "", ylab = "", bty = "n", axes = F)
+  at = c(xlim[1], axisTicks(xlim, log = F), xlim[2])
+  axis(side = 1, at = at, labels = ifelse(rep(hide_numbers, length(at)), rep("", length(at)), at))
+  #   axis(side = 1, labels = !hide_numbers, outer = 
+  yrange = ylim[2] - ylim[1]
   apply(ranges, 1, function(rng){
     width = rng[2] - rng[1]
-    rect(rng[1], 0, rng[2], -1, col = state_colors[rng[3]])
+    rect(rng[1], ylim[1] + yrange * 2 / 3, rng[2], ylim[2] - yrange * 2 / 3, col = state_colors[rng[3]])
     #     lines(rng[1:2], rep(0,2), lwd = 3, col = state_colors[rng[3]])
     x = mean(c(rng[1], rng[2]))
-    text(x = x, y = .1, labels = rng[3], adj = c(.5,0))
+    text(x = x, y = ylim[2] - yrange * 1 / 3 + .1, labels = rng[3], adj = c(.5,0))
   })
 }

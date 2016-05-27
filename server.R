@@ -1,6 +1,5 @@
 library(png)
-source("functions_bw_plots.R")
-source("functions_ref_from_UCSC.R")
+source("functions_integrated_tracks_figure.R")
 # This is the server logic for a Shiny web application.
 # You can find out more about building applications with Shiny here:
 #
@@ -19,7 +18,7 @@ shinyServer(function(input, output, session) {
     pos = isolate(input$chrPos)
     print(paste(input$cellType, input$drugTreatment, pos))
     if(pos != "none"){
-      figure_bw_plots(cell = input$cellType, drug = input$drugTreatment, ucsc_rng = pos, add_ref_img = T)
+      figure_track_plots(cell = input$cellType, drug = input$drugTreatment, ucsc_rng = pos, add_ref_img = T)
       
     }else{
       #par(mai = c(.887232,  2.81696, 1.963, .321621)) #measured margins from figure
@@ -56,7 +55,7 @@ shinyServer(function(input, output, session) {
       }else{
         warning("invalid featureType set")
       }
-      print(possible)
+      #       print(possible)
       if(possible != "NA:NA-NA"){
         updateTextInput(session, inputId = "chrPos", value = possible)
       }
@@ -92,7 +91,7 @@ shinyServer(function(input, output, session) {
   ref_name = function(){
     make_filename("ref.png")
   }
-
+  
   output$dlImage = downloadHandler(filename = ref_name,
                                    content = function(file){
                                      img_width = session$clientData$output_profilePlots_width
@@ -105,26 +104,12 @@ shinyServer(function(input, output, session) {
   
   observeEvent(input$plot_dblClick, {
     dbl = input$plot_dblClick
-    print(paste(dbl$x, dbl$y))
-    #need to convert from screen to genome
-#     m = 1.202128209
-#     b = -20442400.19
-#     
-#     #     save(input$plot_brush, file = "brush.save")
-#     disp_start = input$plot_brush$xmin
-#     disp_end = input$plot_brush$xmax
-#     disp_w = session$clientData$output_profilePlots_width
-#     chrm = strsplit(input$chrPos, "[:-]")[[1]][1]
-#     chr_start = as.integer(m * disp_start + b)
-#     chr_end = as.integer(m * disp_end + b)
-#     print(paste(disp_start, disp_end))
-#     print(paste(chr_start, chr_end))
-#     
-#     #     new_start = round(chr_start + (disp_start / disp_w * (chr_end - chr_start)))
-#     #     new_end = round(chr_start + (disp_end / disp_w * (chr_end - chr_start)))
-#     #     print(paste(new_start, new_end))
-#     newPos = paste0(chrm, ":", chr_start, "-", chr_end)
-#     updateTextInput(session, inputId = "chrPos", value = newPos)
+    disp_start = input$plot_brush$xmin
+    disp_end = input$plot_brush$xmax
+    print(c(disp_start, disp_end))
+    chrm = strsplit(input$chrPos, "[:-]")[[1]][1]
+    newPos = paste0(chrm, ":", as.integer(disp_start), "-", as.integer(disp_end))
+    updateTextInput(session, inputId = "chrPos", value = newPos)
   })
   
   observeEvent(input$zoomOut, handlerExpr = {
