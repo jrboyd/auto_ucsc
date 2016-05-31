@@ -1,7 +1,7 @@
-load("ensg_ref.save")
+load("../data_auto_ucsc/ensg_ref.save")
 dupe = (duplicated(ensg_ref$gene_name))
 sym_ref = ensg_ref[!dupe,]
-rownames(sym_ref) = sym_ref$gene_name
+rownames(sym_ref) = toupper(sym_ref$gene_name)
 all_symbols = sort(unique(sym_ref$gene_name))
 #states.IDEAS = read.table("mcf7_ideas_full.state", stringsAsFactors = F)
 

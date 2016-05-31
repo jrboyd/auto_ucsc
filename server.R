@@ -1,3 +1,4 @@
+library(shiny)
 library(png)
 source("functions_integrated_tracks_figure.R")
 # This is the server logic for a Shiny web application.
@@ -6,30 +7,28 @@ source("functions_integrated_tracks_figure.R")
 # http://shiny.rstudio.com
 #
 #options(shiny.reactlog = T)
+#options(shiny.error = browser)
 
-library(shiny)
 
 shinyServer(function(input, output, session) {
   
   output$profilePlots = renderPlot({
-    req(input$chrPos, input$cellType, input$drugTreatment)
+    
+    
+    req(input$cellType, input$drugTreatment)
     print("profilePlots")
-    print(values$plot_number)
+    print(paste("plot", values$plot_number))
     pos = isolate(input$chrPos)
     print(paste(input$cellType, input$drugTreatment, pos))
-    if(pos != "none"){
-      figure_track_plots(cell = input$cellType, drug = input$drugTreatment, ucsc_rng = pos, add_ref_img = T)
-      
+    if(values$plot_number > 2){
+      plot_title = paste0(isolate(input$geneSymbol), "\n", input$cellType, " ", input$drugTreatment)
+      figure_track_plots(cell = input$cellType, drug = input$drugTreatment, ucsc_rng = pos, add_ref_img = T, plot_title = plot_title)
     }else{
-      #par(mai = c(.887232,  2.81696, 1.963, .321621)) #measured margins from figure
-      
-      plot(0:1, 0:1); text(.5, .5, "waiting for position")
+      plot(0:1, 0:1); text(.5, .5, "waiting for input")
     }
-    layout(1)
-    par(mai = c(.887232,  2.81696, 1.963, .321621))
   })
   output$plotUI = renderUI({
-    print(values$ui_number)
+    print(paste("ui", values$ui_number))
     values$plot_number = isolate(values$plot_number) + 1
     plotOutput("profilePlots", height = 800, width = 1000,
                brush = brushOpts(id = 'plot_brush', fill = rgb(0,0,1), stroke = "black", opacity = .2, clip = T, 
@@ -38,7 +37,20 @@ shinyServer(function(input, output, session) {
                dblclick = dblclickOpts(id = "plot_dblClick"))
   })
   
-  observe({#updates chrPos if gene symbol is valid
+  getPossible = function(gs, type, width){
+    possible = NA
+    if(type == "promoter"){
+      possible = symbol2promoter_ucsc(gs, ext = as.integer(width))
+    }else if(type == "gene body"){
+      possible = symbol2ucsc(gs)
+    }else{
+      warning("invalid featureType set")
+    }
+    return(possible)
+  }
+  
+  observe({
+    #input$geneSymbol, {#updates chrPos if gene symbol is valid or promoter/feature changes
     print("observer geneSymbol")
     req(input$geneSymbol, input$featureType)
     met = NULL
@@ -46,63 +58,124 @@ shinyServer(function(input, output, session) {
     if(length(intersect(all_symbols, gs)) < 1){
       return()#do nothing if no match
     }
+    updateTextInput(session, inputId = "geneSymbol", value = gs)
+    if(values$plot_number > 1){
+      values$geneLists$history = union(isolate(values$geneLists$history), gs)
+    }
     if(!is.null(input$featureType)){
-      print("start tests")
-      if(input$featureType == "promoter"){
-        possible = symbol2promoter_ucsc(gs, ext = as.integer(input$promoterWidth))
-      }else if(input$featureType == "gene body"){
-        possible = symbol2ucsc(gs)
-      }else{
-        warning("invalid featureType set")
-      }
-      #       print(possible)
-      if(possible != "NA:NA-NA"){
+      possible = getPossible(gs = gs,  type = input$featureType, width = input$promoterWidth)
+      if(possible != "NA:NA-NA" && possible != values$lastPos){
+        print(paste('updating possition with', possible))
+        values$lastPos = possible
         updateTextInput(session, inputId = "chrPos", value = possible)
       }
     }
   })
   
-  observe({#check chrPos updates plotNumber each time a new plot should be drawn
-    req(input$chrPos)
+  observeEvent(input$chrPos, { #check chrPos updates plotNumber each time a new plot should be drawn
+     req(isolate(input$chrPos))
     print("observe chrPos")
     
-    pos = input$chrPos
+    old_pos = input$chrPos #should not call when chrPos is being set here or elsewhere
     
-    if(pos != "none"){
-      if(grepl(",", pos)){
-        pos = gsub(",", "", pos)
-        updateTextInput(session, inputId = "chrPos", value = pos)  
+    if(old_pos != "none"){
+      if(grepl(",", old_pos)){
+        print("cleanup chrPos")
+        old_pos = gsub(",", "", old_pos)
+        updateTextInput(session, inputId = "chrPos", value = old_pos)  
       }
       
-      pos = strsplit(pos, "[:-]")[[1]]
-      chrm = pos[1]; start = as.integer(pos[2]); end = as.integer(pos[3])
-      if(end > start){
+      old_pos = strsplit(old_pos, "[:-]")[[1]]
+      chrm = old_pos[1]; 
+      start_pos = as.integer(old_pos[2]); 
+      end_pos = as.integer(old_pos[3])
+      if(end_pos > start_pos){
+        print("force plot update")
         values$ui_number = isolate(values$ui_number) + 1
       }
     }
   })
-  values = reactiveValues(plot_number = 0, ui_number = 0)
-  make_filename = function(ext){
-    paste0(input$cellType, "_", input$geneSymbol, ".", ext)
-  }
-  png_name = function(){
-    make_filename("png")
-  }
-  ref_name = function(){
-    make_filename("ref.png")
-  }
   
-  output$dlImage = downloadHandler(filename = ref_name,
+  values = reactiveValues(
+    plot_number = 0, 
+    ui_number = 0, 
+    geneLists = list(history = character()),
+    lastPos = "NA:NA-NA"
+  )
+  
+  
+  make_filename = reactive({
+    bname = paste(input$geneSymbol, sub(":", "-", input$chrPos), sep = "_")
+    desc = paste(input$cellType, input$drugTreatment, input$featureType, sep = "_")
+    if(input$featureType == "promoter") desc = paste(desc, input$promoterWidth, sep = "")
+    bname = paste(bname, desc, sep = ".")
+    fname = paste0(bname, ".pdf")
+    return(fname)
+  })
+  
+  output$dlImage = downloadHandler(filename = make_filename,
                                    content = function(file){
                                      img_width = session$clientData$output_profilePlots_width
                                      img_height = session$clientData$output_profilePlots_height
-                                     png(file, img_width, img_height)
-                                     figure_bw_plots(cell = input$cellType, drug = input$drugTreatment, ucsc_rng = symbol2ucsc(input$geneSymbol))
+                                     pdf(file, width = img_width / 72, height = img_height / 72)
+                                     pos = getPossible(gs = input$geneSymbol, type = input$featureType, width = input$promoterWidth)
+                                     plot_title = paste0(input$geneSymbol, "\n", input$cellType, " ", input$drugTreatment)
+                                     figure_track_plots(cell = input$cellType, drug = input$drugTreatment, ucsc_rng = input$chrPos, add_ref_img = T, plot_title = plot_title)
                                      dev.off()
                                    }
   )
   
+  
+  output$dlGeneLists = downloadHandler(
+    
+    filename = ifelse(length(input$selectedGeneLists) == 1, 
+                      paste0(input$selectedGeneLists, ".zip"),
+                      "batch.zip"),
+    content = function(file){
+      print("dlGeneLists")
+      out_dir = paste("tmp", as.integer(Sys.time()), sep = "_")
+      dir.create(out_dir)
+      img_width = session$clientData$output_profilePlots_width
+      img_height = session$clientData$output_profilePlots_height
+      
+      for(gl_name in input$selectedGeneLists){
+        bname = strsplit(gl_name, "\\.")[[1]][1]
+        desc = paste(input$cellType, input$drugTreatment, input$featureType, sep = "_")
+        if(input$featureType == "promoter") desc = paste(desc, input$promoterWidth, sep = "")
+        bname = paste(bname, desc, sep = ".")
+        fname = paste0(out_dir, "/" , bname, ".pdf")
+        pdf(fname, width = img_width / 72, height = img_height / 72)
+        glist = values$geneLists[[gl_name]]
+        glist = intersect(glist, all_symbols)
+        for(gs in glist){
+          print(gs)
+          pos = getPossible(gs = gs, type = input$featureType, width = input$promoterWidth)
+          plot_title = paste0(gs, "\n", input$cellType, " ", input$drugTreatment)
+          figure_track_plots(cell = input$cellType, drug = input$drugTreatment, ucsc_rng = pos, add_ref_img = T, plot_title = plot_title)
+        }
+        dev.off()
+      }
+      zipfiles = dir(out_dir, full.names = T)
+      if(length(zipfiles) == 0){
+        write("", file = "no_files_to_download")  
+        zipfiles = "no_files_to_download"
+      }
+      print(zipfiles)
+      zip(zipfile = file, files = zipfiles, flags = "-j")
+    }
+  )
+  
+  observeEvent(input$upGenes, {#parse and record uploaded genes
+    print(input$upGenes)
+    genes = read.table(input$upGenes$datapath, stringsAsFactors = F, header = F, quote = "")[,1]
+    values$geneLists[[input$upGenes$name]] = toupper(genes)
+  })
+  output$availableGeneLists = renderUI({
+    selectInput(inputId = "selectedGeneLists", label = "Gene Lists to Export", choices = names(values$geneLists), multiple = T)
+  })
+  
   observeEvent(input$plot_dblClick, {
+    print("dbl_click")
     dbl = input$plot_dblClick
     disp_start = input$plot_brush$xmin
     disp_end = input$plot_brush$xmax

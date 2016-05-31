@@ -2,31 +2,31 @@ if(!exists("symbol2ucsc")) source("fetch_states.R")
 
 #load IDEAS state data
 if(!exists("states.IDEAS")){
-  if(!file.exists("states.IDEAS.save")){
-    states.IDEAS = read.table(file = "data_IDEAS/mcf10a_and_mcf7_ideas_full.state", stringsAsFactors = F)
+  if(!file.exists("../data_auto_ucsc/states.IDEAS.save")){
+    states.IDEAS = read.table(file = "../data_auto_ucsc/data_IDEAS/mcf10a_and_mcf7_ideas_full.state", stringsAsFactors = F)
     states.IDEAS[,5:ncol(states.IDEAS)] = states.IDEAS[,5:ncol(states.IDEAS)] + 1
     states.IDEAS[,4] = states.IDEAS[,4] + 200
     drugs = c("bza", "ctrl", "e2bza", "e2", "gc10bza", "gc10")
     cnames = sapply(c("MCF10A", "MCF7"), function(x)paste(x, drugs, sep = "_"))[1:12]
     colnames(states.IDEAS) = c("row", "chrm", "start", "end", cnames)
-    save(states.IDEAS, file = "states.IDEAS.save")
+    save(states.IDEAS, file = "../data_auto_ucsc/states.IDEAS.save")
   }else{
-    load("states.IDEAS.save")
+    load("../data_auto_ucsc/states.IDEAS.save")
   }
 }
 
 #load chromHMM state data
 if(!exists("states.cHMM")){
-  if(!file.exists("states.cHMM.save")){
-    states.cHMM = read.table(file = "data_chromHMM//chromHMM_states_combined.body", stringsAsFactors = F)
-    cnames = read.table(file = "data_chromHMM//chromHMM_states_combined.header", stringsAsFactors = F)
+  if(!file.exists("../data_auto_ucsc/states.cHMM.save")){
+    states.cHMM = read.table(file = "../data_auto_ucsc/data_chromHMM//chromHMM_states_combined.body", stringsAsFactors = F)
+    cnames = read.table(file = "../data_auto_ucsc/data_chromHMM//chromHMM_states_combined.header", stringsAsFactors = F)
     cnames = sub("_30_999_segments.expanded.bed", "", cnames)
     cnames = sub("MCF10A", "MCF10A_", cnames)
     cnames = sub("MCF7", "MCF7_", cnames)
     colnames(states.cHMM) = cnames
-    save(states.cHMM, file = "states.cHMM.save")
+    save(states.cHMM, file = "../data_auto_ucsc/states.cHMM.save")
   }else{
-    load("states.cHMM.save")
+    load("../data_auto_ucsc/states.cHMM.save")
   }
 }
 

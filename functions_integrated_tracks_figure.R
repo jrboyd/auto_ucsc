@@ -4,6 +4,10 @@ source("functions_state_plots.R")
 source("functions_ref_from_UCSC.R")
 source("fetch_states.R")
 source("functions_integrated_tracks_components.R")
+
+all_symbols = toupper(all_symbols)
+
+
 figure_track_plots = function(cell = "MCF10A", drug = "e2", marks = names(mark_colors),
                               #                            chip_bigwigs, 
                               mark_colors = c("H3K27ME3" = "#E41A1C", 
@@ -12,8 +16,8 @@ figure_track_plots = function(cell = "MCF10A", drug = "e2", marks = names(mark_c
                                               "H3K27AC" = "#FF7F00"), 
                               ucsc_rng = "chr10:17,219,220-17,241,407",
                               add_ref_img = T,
-                              plot_title = ucsc_rng){
-  #cell = "MCF10A"; drug = "e2"; marks = names(mark_colors); mark_colors = c("H3K27ME3" = "#E41A1C", "H3K4AC" = "#377EB8", "H3K4ME3" ="#4DAF4A", "H3K27AC" = "#FF7F00"); ucsc_rng = "chr10:17,219,220-17,241,407"; add_ref_img = T; plot_title = ucsc_rng
+                              plot_title = paste(cell, drug)){
+  #cell = "MCF10A"; drug = "e2"; marks = names(mark_colors); mark_colors = c("H3K27ME3" = "#E41A1C", "H3K4AC" = "#377EB8", "H3K4ME3" ="#4DAF4A", "H3K27AC" = "#FF7F00"); ucsc_rng = "chr10:17,219,220-17,241,407"; add_ref_img = T; plot_title = paste(cell, drug)
   bot_mai = 2
   left_mai = 3
   top_mai = 0
@@ -52,7 +56,7 @@ figure_track_plots = function(cell = "MCF10A", drug = "e2", marks = names(mark_c
   for(a in at){
     lines(rep(a, 2), c(0, plot_h - img_Hplot), lty = 2)
   }
-  text(x = start - (end - start)*.3, y = plot_h * 3.5 / 5, labels = paste(cell, drug), adj = 0)
+  text(x = start - (end - start)*.25, y = plot_h * 3.5 / 5, labels = plot_title, adj = 0)
   legend(x = start - (end - start)*.3, y = plot_h * 3 / 5,  legend = c("RNA+", "RNA-", names(mark_colors)), fill = c("gray", "black", mark_colors), bty = "n", xpd = NA)
   #   lines(rep(par("usr")[1], 2), par("usr")[3:4], lty = 2)
   #   lines(rep(par("usr")[2], 2), par("usr")[3:4], lty = 2)
