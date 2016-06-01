@@ -1,6 +1,7 @@
 library(shiny)
 library(png)
 source("functions_integrated_tracks_figure.R")
+na_pos = "NA:NA-NA"
 # This is the server logic for a Shiny web application.
 # You can find out more about building applications with Shiny here:
 #
@@ -13,15 +14,13 @@ source("functions_integrated_tracks_figure.R")
 shinyServer(function(input, output, session) {
   
   output$profilePlots = renderPlot({
-    
-    
     req(input$cellType, input$drugTreatment)
     print("profilePlots")
     print(paste("plot", values$plot_number))
-    pos = isolate(input$chrPos)
+    pos = values$setPos
     print(paste(input$cellType, input$drugTreatment, pos))
-    if(values$plot_number > 2){
-      plot_title = paste0(isolate(input$geneSymbol), "\n", input$cellType, " ", input$drugTreatment)
+    if(values$plot_number > -1){
+      plot_title = paste0(values$setGeneSymbol, "\n", input$cellType, " ", input$drugTreatment)
       figure_track_plots(cell = input$cellType, drug = input$drugTreatment, ucsc_rng = pos, add_ref_img = T, plot_title = plot_title)
     }else{
       plot(0:1, 0:1); text(.5, .5, "waiting for input")
@@ -49,11 +48,13 @@ shinyServer(function(input, output, session) {
     return(possible)
   }
   
-  observe({
-    #input$geneSymbol, {#updates chrPos if gene symbol is valid or promoter/feature changes
-    print("observer geneSymbol")
-    req(input$geneSymbol, input$featureType)
-    met = NULL
+  r_promoterWidth = reactive({
+    return(input$promoterWidth)
+  })
+  
+  observeEvent(input$geneSymbol, {#when geneSymbols changes, check if valid and update values$setGeneSymbol
+    print("observer input$geneSymbol")
+    req(input$geneSymbol)
     gs = toupper(input$geneSymbol)
     if(length(intersect(all_symbols, gs)) < 1){
       return()#do nothing if no match
@@ -62,36 +63,45 @@ shinyServer(function(input, output, session) {
     if(values$plot_number > 1){
       values$geneLists$history = union(isolate(values$geneLists$history), gs)
     }
-    if(!is.null(input$featureType)){
-      possible = getPossible(gs = gs,  type = input$featureType, width = input$promoterWidth)
-      if(possible != "NA:NA-NA" && possible != values$lastPos){
-        print(paste('updating possition with', possible))
-        values$lastPos = possible
-        updateTextInput(session, inputId = "chrPos", value = possible)
-      }
+    values$setGeneSymbol = gs
+  })
+  
+  observeEvent(c(values$setGeneSymbol, input$featureType, input$promoterWidth), {#when values$SetgeneSymbol changes, update input$chrPos and values$chrPos
+    #input$geneSymbol, {#updates chrPos if gene symbol is valid or promoter/feature changes
+    print("observer values$setGeneSymbol")
+    req(values$setGeneSymbol, input$featureType, input$promoterWidth)
+    possible = getPossible(gs = values$setGeneSymbol,  type = input$featureType, width = input$promoterWidth)
+    if(possible != na_pos && possible != values$lastPos){
+      print(paste('updating possition with', possible))
+#       values$setPos = possible
+      updateTextInput(session, inputId = "chrPos", value = possible)
     }
   })
   
+
+  
   observeEvent(input$chrPos, { #check chrPos updates plotNumber each time a new plot should be drawn
-     req(isolate(input$chrPos))
+    req(input$chrPos)
     print("observe chrPos")
     
-    old_pos = input$chrPos #should not call when chrPos is being set here or elsewhere
+    input_pos = input$chrPos #should not call when chrPos is being set here or elsewhere
     
-    if(old_pos != "none"){
-      if(grepl(",", old_pos)){
+    if(input_pos != na_pos){
+      if(grepl(",", input_pos)){
         print("cleanup chrPos")
-        old_pos = gsub(",", "", old_pos)
-        updateTextInput(session, inputId = "chrPos", value = old_pos)  
+        input_pos = gsub(",", "", input_pos)
+        updateTextInput(session, inputId = "chrPos", value = input_pos)  
       }
       
-      old_pos = strsplit(old_pos, "[:-]")[[1]]
-      chrm = old_pos[1]; 
-      start_pos = as.integer(old_pos[2]); 
-      end_pos = as.integer(old_pos[3])
-      if(end_pos > start_pos){
-        print("force plot update")
-        values$ui_number = isolate(values$ui_number) + 1
+      split_pos = strsplit(input_pos, "[:-]")[[1]]
+      chrm = split_pos[1]; 
+      start_pos = as.integer(split_pos[2]); 
+      end_pos = as.integer(split_pos[3])
+      if(end_pos > start_pos && values$setPos != input_pos){#Pos must be valid and new
+        print("force plot update with new chrPos")
+        values$lastPos = values$setPos
+        values$setPos = input_pos
+        #         values$ui_number = isolate(values$ui_number) + 1
       }
     }
   })
@@ -99,8 +109,10 @@ shinyServer(function(input, output, session) {
   values = reactiveValues(
     plot_number = 0, 
     ui_number = 0, 
-    geneLists = list(history = character()),
-    lastPos = "NA:NA-NA"
+    geneLists = list(history = character()),#geneLists available for export
+    lastPos = na_pos,
+    setPos = na_pos,#position tested for validity
+    setGeneSymbol = "PGR"#symbol tested for validiting
   )
   
   
