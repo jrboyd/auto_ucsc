@@ -21,7 +21,7 @@ shinyServer(function(input, output, session) {
     print(paste(input$cellType, input$drugTreatment, pos))
     if(values$plot_number > -1){
       plot_title = paste0(values$setGeneSymbol, "\n", input$cellType, " ", input$drugTreatment)
-      figure_track_plots(cell = input$cellType, drug = input$drugTreatment, ucsc_rng = pos, add_ref_img = T, plot_title = plot_title)
+      figure_track_plots(cell = input$cellType, drug = input$drugTreatment, ucsc_rng = pos, add_ref_img = T, plot_title = plot_title, interpret_states = input$interpretStates)
     }else{
       plot(0:1, 0:1); text(.5, .5, "waiting for input")
     }
@@ -48,10 +48,6 @@ shinyServer(function(input, output, session) {
     return(possible)
   }
   
-  r_promoterWidth = reactive({
-    return(input$promoterWidth)
-  })
-  
   observeEvent(input$geneSymbol, {#when geneSymbols changes, check if valid and update values$setGeneSymbol
     print("observer input$geneSymbol")
     req(input$geneSymbol)
@@ -73,12 +69,10 @@ shinyServer(function(input, output, session) {
     possible = getPossible(gs = values$setGeneSymbol,  type = input$featureType, width = input$promoterWidth)
     if(possible != na_pos && possible != values$lastPos){
       print(paste('updating possition with', possible))
-#       values$setPos = possible
+      #       values$setPos = possible
       updateTextInput(session, inputId = "chrPos", value = possible)
     }
   })
-  
-
   
   observeEvent(input$chrPos, { #check chrPos updates plotNumber each time a new plot should be drawn
     req(input$chrPos)
@@ -134,9 +128,7 @@ shinyServer(function(input, output, session) {
                                      plot_title = paste0(input$geneSymbol, "\n", input$cellType, " ", input$drugTreatment)
                                      figure_track_plots(cell = input$cellType, drug = input$drugTreatment, ucsc_rng = input$chrPos, add_ref_img = T, plot_title = plot_title)
                                      dev.off()
-                                   }
-  )
-  
+                                   })
   
   output$dlGeneLists = downloadHandler(
     
@@ -174,18 +166,19 @@ shinyServer(function(input, output, session) {
       }
       print(zipfiles)
       zip(zipfile = file, files = zipfiles, flags = "-j")
-    }
-  )
+    })
   
   observeEvent(input$upGenes, {#parse and record uploaded genes
     print(input$upGenes)
     genes = read.table(input$upGenes$datapath, stringsAsFactors = F, header = F, quote = "")[,1]
     values$geneLists[[input$upGenes$name]] = toupper(genes)
   })
+  
   output$availableGeneLists = renderUI({
     selectInput(inputId = "selectedGeneLists", label = "Gene Lists to Export", choices = names(values$geneLists), multiple = T)
   })
   
+  #   source("server_plot_reactivity.R")
   observeEvent(input$plot_dblClick, {
     print("dbl_click")
     dbl = input$plot_dblClick
@@ -209,6 +202,7 @@ shinyServer(function(input, output, session) {
     updateTextInput(session, inputId = "chrPos", value = 
                       paste0(chr, ":", new_start, "-", new_end))
   })
+  
   observeEvent(input$zoomIn, handlerExpr = {
     chr = strsplit(input$chrPos, "[:-]")[[1]][1]
     chr_start = as.integer(strsplit(input$chrPos, "[:-]")[[1]][2])
@@ -221,6 +215,7 @@ shinyServer(function(input, output, session) {
     updateTextInput(session, inputId = "chrPos", value = 
                       paste0(chr, ":", new_start, "-", new_end))
   })
+  
   observeEvent(input$shiftLeft, handlerExpr = {
     chr = strsplit(input$chrPos, "[:-]")[[1]][1]
     chr_start = as.integer(strsplit(input$chrPos, "[:-]")[[1]][2])
@@ -232,6 +227,7 @@ shinyServer(function(input, output, session) {
     updateTextInput(session, inputId = "chrPos", value = 
                       paste0(chr, ":", new_start, "-", new_end))
   })
+  
   observeEvent(input$shiftRight, handlerExpr = {
     chr = strsplit(input$chrPos, "[:-]")[[1]][1]
     chr_start = as.integer(strsplit(input$chrPos, "[:-]")[[1]][2])

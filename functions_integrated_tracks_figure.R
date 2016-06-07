@@ -16,7 +16,8 @@ figure_track_plots = function(cell = "MCF10A", drug = "e2", marks = names(mark_c
                                               "H3K27AC" = "#FF7F00"), 
                               ucsc_rng = "chr10:17,219,220-17,241,407",
                               add_ref_img = T,
-                              plot_title = paste(cell, drug)){
+                              plot_title = paste(cell, drug),
+                              interpret_states = F){
   #cell = "MCF10A"; drug = "e2"; marks = names(mark_colors); mark_colors = c("H3K27ME3" = "#E41A1C", "H3K4AC" = "#377EB8", "H3K4ME3" ="#4DAF4A", "H3K27AC" = "#FF7F00"); ucsc_rng = "chr10:17,219,220-17,241,407"; add_ref_img = T; plot_title = paste(cell, drug)
   bot_mai = 2
   left_mai = 3
@@ -104,14 +105,25 @@ figure_track_plots = function(cell = "MCF10A", drug = "e2", marks = names(mark_c
   k = kept.states.IDEAS$end > start & kept.states.IDEAS$start < end
   kept.states.IDEAS = kept.states.IDEAS[k,]
   axis(side = 2, at = c(1.5), labels = "IDEAS states", las = 2)
-  plot_state_numbers(starts = kept.states.IDEAS$start, ends = kept.states.IDEAS$end, states = kept.states.IDEAS[[cell_drug_keys]], xlim = c(start, end), ylim = c(1, 2))
+  #starts = kept.states.IDEAS$start; ends = kept.states.IDEAS$end; states = kept.states.IDEAS[[cell_drug_keys]]; xlim = c(start, end); ylim = c(1, 2); type = "IDEAS"
+  if(interpret_states){
+    plot_state_descriptions(starts = kept.states.IDEAS$start, ends = kept.states.IDEAS$end, states = kept.states.IDEAS[[cell_drug_keys]], xlim = c(start, end), ylim = c(1, 2), type = "IDEAS")
+  }else{
+    plot_state_numbers(starts = kept.states.IDEAS$start, ends = kept.states.IDEAS$end, states = kept.states.IDEAS[[cell_drug_keys]], xlim = c(start, end), ylim = c(1, 2))
+  }
+  
+  #   
   
   k = states.cHMM$chrm == chrm
   kept.states.cHMM = states.cHMM[k,]
   k = kept.states.cHMM$end > start & kept.states.cHMM$start < end
   kept.states.cHMM = kept.states.cHMM[k,]
   axis(side = 2, at = c(0.5), labels = "chromHMM states", las = 2)
-  plot_state_numbers(starts = kept.states.cHMM$start, ends = kept.states.cHMM$end, states = kept.states.cHMM[[cell_drug_keys]], xlim = c(start, end), ylim = c(0, 1))
+  if(interpret_states){
+    plot_state_descriptions(starts = kept.states.cHMM$start, ends = kept.states.cHMM$end, states = kept.states.cHMM[[cell_drug_keys]], xlim = c(start, end), ylim = c(0, 1), type = "chromHMM")
+  }else{
+    plot_state_numbers(starts = kept.states.cHMM$start, ends = kept.states.cHMM$end, states = kept.states.cHMM[[cell_drug_keys]], xlim = c(start, end), ylim = c(0, 1)) 
+  }
   
   axis(side = 1, at = at, labels = at)
   axis(side = 1, at = c(start, end), labels = paste(c(start, end), "    "), las = 2)

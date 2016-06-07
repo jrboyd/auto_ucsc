@@ -30,12 +30,24 @@ if(!exists("states.cHMM")){
   }
 }
 
-# symbol2range("RUNX2")
-# local =  fetch_IDEAS_by_symbol("RUNX2")
-# 
-# starts = local[,3]
-# ends = local[,4]
-# states = local[,5]
+#convert state number to interpretable descriptions
+IDEAS2desc = read.table("../data_auto_ucsc/IDEAS_states.txt", sep = "\t")
+IDEAS2desc = apply(IDEAS2desc, 1, function(x)ifelse(x[2] == "", x[1], x[2]))
+names(IDEAS2desc) = as.character(1:length(IDEAS2desc))
+
+chromHMM2desc = read.table("../data_auto_ucsc/chromHMM_states.txt", sep = "\t")
+chromHMM2desc = apply(chromHMM2desc, 1, function(x)ifelse(x[2] == "", x[1], x[2]))
+names(chromHMM2desc) = as.character(1:length(chromHMM2desc))
+
+plot_state_descriptions = function(starts, ends, states, xlim, ylim, type = c("IDEAS", "chromHMM")[1], hide_numbers = T){
+  if(type == "IDEAS"){
+    plot_state_numbers(starts, ends, IDEAS2desc[states], xlim, ylim, hide_numbers)
+  }else if(type == "chromHMM"){
+    plot_state_numbers(starts, ends, chromHMM2desc[states], xlim, ylim, hide_numbers)
+  }else{
+    stop("unrecognized type")
+  }
+}
 
 plot_state_numbers = function(starts, ends, states, xlim, ylim, hide_numbers = T){
   uniq_states = 1:35
@@ -63,11 +75,20 @@ plot_state_numbers = function(starts, ends, states, xlim, ylim, hide_numbers = T
   axis(side = 1, at = at, labels = ifelse(rep(hide_numbers, length(at)), rep("", length(at)), at))
   #   axis(side = 1, labels = !hide_numbers, outer = 
   yrange = ylim[2] - ylim[1]
+  alt = 1
   apply(ranges, 1, function(rng){
-    width = rng[2] - rng[1]
-    rect(rng[1], ylim[1] + yrange * 2 / 3, rng[2], ylim[2] - yrange * 2 / 3, col = state_colors[rng[3]])
-    #     lines(rng[1:2], rep(0,2), lwd = 3, col = state_colors[rng[3]])
-    x = mean(c(rng[1], rng[2]))
-    text(x = x, y = ylim[2] - yrange * 1 / 3 + .1, labels = rng[3], adj = c(.5,0))
+    s = as.integer(rng[1])
+    e = as.integer(rng[2])
+    txt = rng[3]
+    width = e - s
+    rect(s, ylim[1] + yrange * 2 / 3, e, ylim[2] - yrange * 2 / 3, col = state_colors[txt])
+    #     lines(rng[1:2], rep(0,2), lwd = 3, col = state_colors[txt])
+    x = mean(c(s, e))
+    text(x = x, y = ylim[1] + yrange / 2 + (.05) * alt, labels = txt, adj = c(.5,ifelse(alt == 1, 0, 1)), cex = .6)
+    if(alt == 1){
+      alt <<- -1
+    }else{
+      alt <<- 1
+    }
   })
 }
